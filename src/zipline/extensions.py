@@ -1,6 +1,13 @@
 import re
 from toolz import curry
 
+#测试
+from zipline.data.bundles import csvdir_bundle, register
+
+register(
+    'custom-csvdir-bundle',
+    lambda *args, **kwargs: csvdir_bundle(*args, bigfile="C:/Users/K.Hawk/zipline-reloaded-Alpha-Deputy/src/zipline/data/bundles/data/data_cache/all_stocks.parquet", **kwargs)
+)
 
 def create_args(args, root):
     """

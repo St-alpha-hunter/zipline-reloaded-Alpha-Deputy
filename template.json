@@ -1,0 +1,38 @@
+
+{
+  "as_of_date": "2025-08-07",
+  "top_n": 50,
+  "factor_weights": [
+    {
+      "name": "momentum",
+      "weight": 0.4,
+      "code": "xxxx"
+    },
+    {
+      "name": "roe",
+      "weight": 0.6,
+      "code": "yyyy"
+  }
+],
+  "exclude_symbols": ["TSLA", "AMC"],
+  "exclude_industries": ["金融", "地产"],
+  "include_industries": ["科技"],
+  "max_industry_exposure": 0.3
+}
+
+
+
+{
+  "rebalance_freq": "monthly",
+  "rebalance_day": 5,
+  "max_position_per_asse":0.10,
+  "max_drawdown": 0.2,
+  "max_turnover":45,
+  "position_limit": 0.15,
+  "capital_base": 1000000,
+  "start_date": "2020-01-01",
+  "end_date": "2023-01-01",
+  "slippage":"0.01",
+  "commission":"0.001"
+
+}

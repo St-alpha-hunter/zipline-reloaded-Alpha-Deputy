@@ -2,6 +2,10 @@
 Module for building a complete daily dataset from Quandl's WIKI dataset.
 """
 
+##核心流程是
+##下载数据 → 解析为DataFrame → 生成元数据 → 写入zipline数据库和bar数据 → 处理拆股分红
+##你只需用FMP的API替换数据下载和解析部分，其余结构可以复用。
+
 from io import BytesIO
 import tarfile
 from zipfile import ZipFile
@@ -21,14 +25,14 @@ log = logging.getLogger(__name__)
 ONE_MEGABYTE = 1024 * 1024
 QUANDL_DATA_URL = "https://www.quandl.com/api/v3/datatables/WIKI/PRICES.csv?"
 
-
+##构造Quandl WIKI PRICES元数据的下载URL
 def format_metadata_url(api_key):
     """Build the query URL for Quandl WIKI Prices metadata."""
     query_params = [("api_key", api_key), ("qopts.export", "true")]
 
     return QUANDL_DATA_URL + urlencode(query_params)
 
-
+##从Quandl下载的zip文件中读取csv，解析为DataFrame，重命名部分字段。
 def load_data_table(file, index_col, show_progress=False):
     """Load data table from zip file provided by Quandl."""
     with ZipFile(file) as zip_file:
@@ -65,7 +69,8 @@ def load_data_table(file, index_col, show_progress=False):
     )
     return data_table
 
-
+##用API KEY下载Quandl元数据，获取数据表下载链接，
+##下载zip并调用load_data_table解析，支持重试。
 def fetch_data_table(api_key, show_progress, retries):
     """Fetch WIKI Prices data table from Quandl"""
     for _ in range(retries):
@@ -99,7 +104,7 @@ def fetch_data_table(api_key, show_progress, retries):
             "Failed to download Quandl data after %d attempts." % (retries)
         )
 
-
+##生成股票元数据（如起止日期、交易所、自动平仓日等）
 def gen_asset_metadata(data, show_progress):
     if show_progress:
         log.info("Generating asset metadata.")
@@ -115,7 +120,7 @@ def gen_asset_metadata(data, show_progress):
     data["auto_close_date"] = data["end_date"].values + pd.Timedelta(days=1)
     return data
 
-
+##解析拆股数据，转换字段名和比例
 def parse_splits(data, show_progress):
     if show_progress:
         log.info("Parsing split data.")
@@ -131,7 +136,7 @@ def parse_splits(data, show_progress):
     )
     return data
 
-
+##解析分红数据，转换字段名
 def parse_dividends(data, show_progress):
     if show_progress:
         log.info("Parsing dividend data.")
@@ -147,7 +152,7 @@ def parse_dividends(data, show_progress):
     )
     return data
 
-
+##按股票ID和交易日生成价格和成交量数据，供写入daily_bar_writer
 def parse_pricing_and_vol(data, sessions, symbol_map):
     for asset_id, symbol in symbol_map.items():
         asset_data = (
@@ -155,7 +160,8 @@ def parse_pricing_and_vol(data, sessions, symbol_map):
         )
         yield asset_id, asset_data
 
-
+##主入口，注册为zipline数据bundle。
+##负责调用上述函数，下载数据、生成元数据、写入数据库和bar数据、处理拆股分红。
 @bundles.register("quandl")
 def quandl_bundle(
     environ,
@@ -228,7 +234,7 @@ def quandl_bundle(
         ),
     )
 
-
+##下载大文件时显示进度条。
 def download_with_progress(url, chunk_size, **progress_kwargs):
     """
     Download streaming data from a URL, printing progress information to the
@@ -261,7 +267,7 @@ def download_with_progress(url, chunk_size, **progress_kwargs):
     data.seek(0)
     return data
 
-
+##简单下载文件，无进度条。
 def download_without_progress(url):
     """
     Download data from a URL, returning a BytesIO containing the loaded data.
@@ -283,7 +289,7 @@ def download_without_progress(url):
 
 QUANTOPIAN_QUANDL_URL = "https://s3.amazonaws.com/quantopian-public-zipline-data/quandl"
 
-
+###兼容旧版Quantopian的quandl bundle，直接下载tar包解压
 @bundles.register("quantopian-quandl", create_writers=False)
 def quantopian_quandl_bundle(
     environ,
